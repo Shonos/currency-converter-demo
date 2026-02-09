@@ -1,0 +1,11 @@
+@CurrencyConverterDemo.Api_HostAddress = http://localhost:5037
+
+GET {{CurrencyConverterDemo.Api_HostAddress}}/v1/weatherforecast/
+Accept: application/json
+
+###
+
+GET {{CurrencyConverterDemo.Api_HostAddress}}/v2/weatherforecast/
+Accept: application/json
+
+###
