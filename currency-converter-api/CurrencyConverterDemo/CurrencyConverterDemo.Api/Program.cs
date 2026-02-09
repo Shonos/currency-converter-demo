@@ -1,4 +1,6 @@
+using CurrencyConverterDemo.Api.Extensions;
 using CurrencyConverterDemo.Api.Middleware;
+using CurrencyConverterDemo.Api.Services;
 using CurrencyConverterDemo.Application.Extensions;
 using CurrencyConverterDemo.Infrastructure.Extensions;
 
@@ -7,6 +9,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Add layer services
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
+
+// Add security services
+builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddApiRateLimiting(builder.Configuration);
+
+// Add application services
+builder.Services.AddScoped<ITokenService, TokenService>();
 
 // Add cross-cutting concerns
 builder.Services.AddControllers();
@@ -26,16 +35,21 @@ builder.Services.AddCors(options =>
         
         policy.WithOrigins(allowedOrigin)
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
 var app = builder.Build();
 
-// Configure middleware
-app.UseExceptionHandler();
-app.UseCors("AllowFrontend");
-app.UseSwaggerConfiguration();
+// Configure middleware pipeline (order is critical!)
+app.UseExceptionHandler();           // 1. Global exception handling
+app.UseSwaggerConfiguration();       // 2. Swagger/OpenAPI (dev only)
+app.UseCors("AllowFrontend");        // 3. CORS
+app.UseRateLimiter();                // 4. Rate limiting
+app.UseAuthentication();             // 5. Authentication (JWT validation)
+app.UseAuthorization();              // 6. Authorization (RBAC)
+
 app.MapControllers();
 
 app.Run();

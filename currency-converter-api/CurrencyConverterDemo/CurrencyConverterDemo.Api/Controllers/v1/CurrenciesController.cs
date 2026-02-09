@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using CurrencyConverterDemo.Application.DTOs;
 using CurrencyConverterDemo.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CurrencyConverterDemo.Api.Controllers.v1;
@@ -11,6 +12,7 @@ namespace CurrencyConverterDemo.Api.Controllers.v1;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/currencies")]
+[AllowAnonymous]
 public class CurrenciesController : ControllerBase
 {
     private readonly ICurrencyService _currencyService;

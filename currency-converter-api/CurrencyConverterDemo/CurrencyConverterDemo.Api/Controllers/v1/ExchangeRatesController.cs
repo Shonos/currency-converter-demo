@@ -1,7 +1,9 @@
 using Asp.Versioning;
 using CurrencyConverterDemo.Application.DTOs;
 using CurrencyConverterDemo.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CurrencyConverterDemo.Api.Controllers.v1;
 
@@ -11,7 +13,8 @@ namespace CurrencyConverterDemo.Api.Controllers.v1;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/exchange-rates")]
-// [Authorize] – Added in security sub-task
+[Authorize]
+[EnableRateLimiting("per-user")]
 public class ExchangeRatesController : ControllerBase
 {
     private readonly ICurrencyService _currencyService;
@@ -32,8 +35,10 @@ public class ExchangeRatesController : ControllerBase
     /// <returns>Latest exchange rates.</returns>
     /// <response code="200">Successfully retrieved exchange rates.</response>
     /// <response code="400">Invalid base currency.</response>
+    /// <response code="401">Unauthorized - valid JWT token required.</response>
     /// <response code="502">External service is unavailable.</response>
     [HttpGet("latest")]
+    [Authorize(Policy = "RequireViewerRole")]
     [ProducesResponseType(typeof(LatestRatesResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
@@ -71,8 +76,11 @@ public class ExchangeRatesController : ControllerBase
     /// <returns>Conversion result with exchange rate and converted amount.</returns>
     /// <response code="200">Successfully converted currency.</response>
     /// <response code="400">Invalid input or excluded currency used.</response>
+    /// <response code="401">Unauthorized - valid JWT token required.</response>
+    /// <response code="403">Forbidden - User or Admin role required.</response>
     /// <response code="502">External service is unavailable.</response>
     [HttpGet("convert")]
+    [Authorize(Policy = "RequireUserRole")]
     [ProducesResponseType(typeof(ConversionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
@@ -153,8 +161,11 @@ public class ExchangeRatesController : ControllerBase
     /// <returns>Paginated historical exchange rates.</returns>
     /// <response code="200">Successfully retrieved historical rates.</response>
     /// <response code="400">Invalid input parameters.</response>
+    /// <response code="401">Unauthorized - valid JWT token required.</response>
+    /// <response code="403">Forbidden - User or Admin role required.</response>
     /// <response code="502">External service is unavailable.</response>
     [HttpGet("history")]
+    [Authorize(Policy = "RequireUserRole")]
     [ProducesResponseType(typeof(HistoricalRatesResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
