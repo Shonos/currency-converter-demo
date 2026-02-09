@@ -1,0 +1,44 @@
+services:
+  valkey:
+    image: valkey/valkey:latest
+    container_name: currency-converter-valkey
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey-data:/data
+    environment:
+      - VALKEY_PASSWORD=dev-password-change-in-production
+    command: >
+      valkey-server
+      --requirepass dev-password-change-in-production
+      --appendonly yes
+      --appendfsync everysec
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "valkey-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - currency-converter-network
+
+  valkey-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: currency-converter-valkey-ui
+    environment:
+      - REDIS_HOSTS=local:valkey:6379:0:dev-password-change-in-production
+    ports:
+      - "8081:8081"
+    depends_on:
+      - valkey
+    restart: unless-stopped
+    networks:
+      - currency-converter-network
+
+volumes:
+  valkey-data:
+    driver: local
+
+networks:
+  currency-converter-network:
+    driver: bridge

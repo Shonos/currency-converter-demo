@@ -1,6 +1,7 @@
 using CurrencyConverterDemo.Application.DTOs;
 using CurrencyConverterDemo.Application.Exceptions;
 using CurrencyConverterDemo.Application.Validators;
+using CurrencyConverterDemo.Domain.Constants;
 using CurrencyConverterDemo.Domain.Interfaces;
 
 namespace CurrencyConverterDemo.Application.Services;
@@ -104,12 +105,26 @@ public class CurrencyService : ICurrencyService
         };
     }
 
-    public async Task<Dictionary<string, string>> GetCurrenciesAsync(
+    public async Task<CurrenciesResponse> GetCurrenciesAsync(
         CancellationToken cancellationToken = default)
     {
         var provider = _providerFactory.GetDefaultProvider();
         var result = await provider.GetCurrenciesAsync(cancellationToken);
 
-        return new Dictionary<string, string>(result);
+        // Filter out excluded currencies
+        var currencies = result
+            .Where(kvp => !ExcludedCurrencies.IsExcluded(kvp.Key))
+            .Select(kvp => new CurrencyDto
+            {
+                Code = kvp.Key,
+                Name = kvp.Value
+            })
+            .OrderBy(c => c.Code)
+            .ToList();
+
+        return new CurrenciesResponse
+        {
+            Currencies = currencies
+        };
     }
 }

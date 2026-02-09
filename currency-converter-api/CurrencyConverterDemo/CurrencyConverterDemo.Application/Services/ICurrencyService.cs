@@ -38,10 +38,10 @@ public interface ICurrencyService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets the list of all supported currencies.
+    /// Gets the list of all supported currencies (excluding blocked currencies).
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A dictionary of currency codes to currency names.</returns>
-    Task<Dictionary<string, string>> GetCurrenciesAsync(
+    /// <returns>The list of supported currencies.</returns>
+    Task<CurrenciesResponse> GetCurrenciesAsync(
         CancellationToken cancellationToken = default);
 }
