@@ -1,11 +1,26 @@
 @CurrencyConverterDemo.Api_HostAddress = http://localhost:5037
 
-GET {{CurrencyConverterDemo.Api_HostAddress}}/v1/weatherforecast/
+GET {{CurrencyConverterDemo.Api_HostAddress}}/v1/WeatherForecast
 Accept: application/json
 
 ###
 
-GET {{CurrencyConverterDemo.Api_HostAddress}}/v2/weatherforecast/
+GET {{CurrencyConverterDemo.Api_HostAddress}}/v2/WeatherForecast
+Accept: application/json
+
+###
+
+GET {{CurrencyConverterDemo.Api_HostAddress}}/api/v1/rates/latest?base=USD
+Accept: application/json
+
+###
+
+GET {{CurrencyConverterDemo.Api_HostAddress}}/api/v1/convert?from=USD&to=EUR&amount=100
+Accept: application/json
+
+###
+
+GET {{CurrencyConverterDemo.Api_HostAddress}}/api/v1/rates/historical?base=USD&start=2023-01-01&end=2023-01-31&page=1&pageSize=50
 Accept: application/json
 
 ###

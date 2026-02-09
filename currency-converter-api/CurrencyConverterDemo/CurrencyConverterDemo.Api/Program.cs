@@ -1,16 +1,20 @@
-using Asp.Versioning;
+using CurrencyConverterDemo.Application.Extensions;
+using CurrencyConverterDemo.Infrastructure.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+// Add layer services
+builder.Services.AddApplicationServices();
+builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// 1. Setup API Versioning
+// Add cross-cutting concerns
+builder.Services.AddControllers();
 builder.Services.AddApiVersioningServices();
 
 var app = builder.Build();
 
-// 3. Map OpenAPI and Swagger UI
+// Configure middleware
 app.UseSwaggerConfiguration();
-
 app.MapControllers();
+
 app.Run();

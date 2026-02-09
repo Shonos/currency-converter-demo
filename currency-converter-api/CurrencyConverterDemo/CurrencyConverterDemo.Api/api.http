@@ -1,0 +1,9 @@
+@Host = http://localhost:5037
+
+### Test Version 1
+GET {{Host}}/v1/WeatherForecast
+Accept: application/json
+
+### Test Version 2
+GET {{Host}}/v2/WeatherForecast
+Accept: application/json

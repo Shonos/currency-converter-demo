@@ -14,4 +14,9 @@
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.1.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\CurrencyConverterDemo.Application\CurrencyConverterDemo.Application.csproj" />
+    <ProjectReference Include="..\CurrencyConverterDemo.Infrastructure\CurrencyConverterDemo.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>
