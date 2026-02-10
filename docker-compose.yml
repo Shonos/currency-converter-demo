@@ -36,6 +36,7 @@ services:
       - CacheSettings__Provider=Redis
       - CacheSettings__RedisConnectionString=redis:6379,password=${REDIS_PASSWORD:-dev-password-change-in-production}
       - CacheSettings__AbsoluteExpirationMinutes=60
+      - Swagger__Enabled=true
     depends_on:
       redis:
         condition: service_healthy
@@ -62,7 +63,7 @@ services:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
       interval: 30s
       timeout: 10s
       retries: 3
