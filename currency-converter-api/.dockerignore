@@ -1,0 +1,31 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+*.md
+
+# Build outputs
+**/bin/
+**/obj/
+**/logs/
+**/TestResults/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.sln.docstates
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temporary files
+*.log
+*.tmp
+*.temp

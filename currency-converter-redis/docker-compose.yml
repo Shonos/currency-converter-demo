@@ -7,10 +7,10 @@ services:
     volumes:
       - valkey-data:/data
     environment:
-      - VALKEY_PASSWORD=dev-password-change-in-production
+      - VALKEY_PASSWORD=${VALKEY_PASSWORD:-dev-password-change-in-production}
     command: >
       valkey-server
-      --requirepass dev-password-change-in-production
+      --requirepass ${VALKEY_PASSWORD:-dev-password-change-in-production}
       --appendonly yes
       --appendfsync everysec
     restart: unless-stopped
@@ -26,7 +26,7 @@ services:
     image: rediscommander/redis-commander:latest
     container_name: currency-converter-valkey-ui
     environment:
-      - REDIS_HOSTS=local:valkey:6379:0:dev-password-change-in-production
+      - REDIS_HOSTS=local:valkey:6379:0:${VALKEY_PASSWORD:-dev-password-change-in-production}
     ports:
       - "8081:8081"
     depends_on:

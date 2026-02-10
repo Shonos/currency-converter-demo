@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # Redis for distributed caching (optional but recommended for production)
+  redis:
+    image: redis:7-alpine
+    container_name: currency-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-dev-password-change-in-production}
+    command: sh -c "redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes"
+    healthcheck:
+      test: ["CMD", "sh", "-c", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - currency-network
+
+  # Backend API
+  api:
+    build:
+      context: ./currency-converter-api
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: currency-api
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - JwtSettings__Secret=${JWT_SECRET:-DevSecret-minimum-32-characters-long-key-here!!}
+      - Cors__AllowedOrigin=http://localhost:3000
+      - CacheSettings__Provider=Redis
+      - CacheSettings__RedisConnectionString=redis:6379,password=${REDIS_PASSWORD:-dev-password-change-in-production}
+      - CacheSettings__AbsoluteExpirationMinutes=60
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - currency-network
+    restart: unless-stopped
+
+  # Frontend Web
+  web:
+    build:
+      context: ./currency-converter-web
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: currency-web
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - currency-network
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  currency-network:
+    driver: bridge

@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      target: test
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Test
+    command: dotnet test --no-build --verbosity normal
+
+  web:
+    build:
+      target: test
+    command: npm run test:run

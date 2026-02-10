@@ -574,12 +574,21 @@ ghcr.io/yourorg/currency-api:1.0.0
 
 ### 5.2 Environment Variables
 
-**Backend (.env or environment-specific config):**
+**Root .env file (for docker-compose):**
+```env
+# Redis Password (shared between Redis and API)
+REDIS_PASSWORD=dev-password-change-in-production
+
+# JWT Secret (minimum 32 characters)
+JWT_SECRET=DevSecret-minimum-32-characters-long-key-here!!
+```
+
+**Backend (.env in api directory or environment-specific config):**
 ```env
 JWT_SECRET=your-secret-key-minimum-32-characters-long
 CORS_ALLOWED_ORIGIN=http://localhost:3000
 CACHE_PROVIDER=Redis
-CACHE_REDIS_CONNECTION=redis:6379
+REDIS_CONNECTION=localhost:6379,password=dev-password-change-in-production
 CACHE_ABSOLUTE_EXPIRATION_MINUTES=60
 ASPNETCORE_ENVIRONMENT=Production
 ```
@@ -589,9 +598,25 @@ ASPNETCORE_ENVIRONMENT=Production
 VITE_API_BASE_URL=http://localhost:5000/api
 ```
 
+**Important:** The Redis password must match in:
+- Root `.env` file (`REDIS_PASSWORD`)
+- API `.env` file (in `REDIS_CONNECTION` string)
+- `currency-converter-redis/.env` file (`VALKEY_PASSWORD`)
+
 ---
 
 ## 6. Quick Reference
+
+### Setup
+```bash
+# Create environment file from example
+cp .env.example .env
+# Edit .env and update passwords and secrets
+
+# Or manually create .env with:
+# REDIS_PASSWORD=dev-password-change-in-production
+# JWT_SECRET=DevSecret-minimum-32-characters-long-key-here!!
+```
 
 ### Build & Run
 ```bash
