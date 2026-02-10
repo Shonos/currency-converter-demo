@@ -1,6 +1,6 @@
 # Sub-Task 07: Frontend Project Setup
 
-> **Context**: Use with `00-master.copilot.md`. This task has **no backend dependencies** and can run in parallel with backend tasks.
+> **Context**: Use with `0-master.copilot.md`. This task has **no backend dependencies** and can run in parallel with backend tasks.
 
 ---
 
@@ -24,21 +24,21 @@ npm install
 
 ```bash
 # Core dependencies
-npm install react-router-dom axios @tanstack/react-query date-fns
+npm install react-router-dom@6.22.0 axios@1.6.7 @tanstack/react-query@5.20.0 date-fns@3.3.0
 
 # UI
-npm install tailwindcss @tailwindcss/vite
-npm install lucide-react             # Icons
-npm install clsx                      # Conditional classnames
-npm install react-hot-toast           # Toast notifications
+npm install -D tailwindcss@2.2.19 postcss@8.4.35 autoprefixer@10.4.17
+npm install lucide-react@0.344.0             # Icons
+npm install clsx@2.1.0                       # Conditional classnames
+npm install react-hot-toast@2.4.1            # Toast notifications
 
 # Dev dependencies
-npm install -D @types/react @types/react-dom
-npm install -D eslint @eslint/js typescript-eslint
-npm install -D prettier eslint-config-prettier
-npm install -D @testing-library/react @testing-library/jest-dom @testing-library/user-event
-npm install -D vitest jsdom @vitest/coverage-v8
-npm install -D msw                    # API mocking for tests
+npm install -D @types/react@18.2.55 @types/react-dom@18.2.19
+npm install -D eslint@8.56.0 @eslint/js@8.56.0 typescript-eslint@7.0.1
+npm install -D prettier@3.2.5 eslint-config-prettier@9.1.0
+npm install -D @testing-library/react@14.2.1 @testing-library/jest-dom@6.4.2 @testing-library/user-event@14.5.2
+npm install -D vitest@1.2.2 jsdom@24.0.0 @vitest/coverage-v8@1.2.2
+npm install -D msw@2.1.5                     # API mocking for tests
 ```
 
 ---
@@ -110,6 +110,8 @@ currency-converter-web/
 ├── tsconfig.app.json
 ├── tsconfig.node.json
 ├── vite.config.ts
+├── tailwind.config.js
+├── postcss.config.js
 ├── eslint.config.js
 ├── .prettierrc
 └── vitest.config.ts
@@ -125,10 +127,9 @@ currency-converter-web/
 // vite.config.ts
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react()],
   server: {
     port: 5173,
     proxy: {
@@ -220,11 +221,42 @@ VITE_API_BASE_URL=http://localhost:5000
 VITE_API_BASE_URL=https://api.production.example.com
 ```
 
-### 3.6 Tailwind CSS (v4)
+### 3.6 Tailwind CSS Config
+
+```javascript
+// tailwind.config.js
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};
+```
+
+### 3.7 PostCSS Config
+
+```javascript
+// postcss.config.js
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+```
+
+### 3.8 CSS Imports
 
 ```css
 /* src/index.css */
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 ```
 
 ---
@@ -456,7 +488,7 @@ export interface LoginResponse {
 
 ## 8. Notes for Agent
 
-- Use **Tailwind CSS v4** (imported via `@import "tailwindcss"` in CSS, plugin in Vite config).
+- Use **Tailwind CSS v2** (with PostCSS configuration and `@tailwind` directives in CSS).
 - Use **React Query** (`@tanstack/react-query`) for all API calls — do NOT use `useEffect` + `useState` for data fetching.
 - Keep the Axios client as a **single instance** with interceptors for auth.
 - The `ProtectedRoute` component should check `AuthContext` and redirect to `/login` if not authenticated.
