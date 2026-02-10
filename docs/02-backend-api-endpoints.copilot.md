@@ -1,6 +1,6 @@
 # Sub-Task 02: Backend API Endpoints
 
-> **Context**: Use with `master.copilot.md`. **Depends on**: Sub-task 01 (project setup must be complete).
+> **Context**: Use with `00-master.copilot.md`. **Depends on**: Sub-task 01 (project setup must be complete).
 
 ---
 

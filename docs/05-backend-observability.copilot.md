@@ -1,6 +1,6 @@
 # Sub-Task 05: Backend Observability & Logging
 
-> **Context**: Use with `master.copilot.md`. **Depends on**: Sub-tasks 01, 02.
+> **Context**: Use with `00-master.copilot.md`. **Depends on**: Sub-tasks 01, 02.
 
 ---
 

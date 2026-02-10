@@ -22,7 +22,7 @@ The platform retrieves live and historical exchange rates, performs currency con
 currency-converter-demo/
 ├── README.md                          # Root readme (setup, architecture, AI usage)
 ├── docs/
-│   ├── master.copilot.md              # THIS FILE – master context
+│   ├── 0-master.copilot.md              # THIS FILE – master context
 │   ├── 01-backend-project-setup.copilot.md
 │   ├── 02-backend-api-endpoints.copilot.md
 │   ├── 03-backend-resilience.copilot.md
@@ -217,6 +217,7 @@ Use ASP.NET Core's `ProblemDetails` for consistency.
 ---
 
 ## 9. Conventions & Standards
+
 
 ### Naming
 - **C# Namespaces**: `CurrencyConverterDemo.{Layer}.{Feature}`

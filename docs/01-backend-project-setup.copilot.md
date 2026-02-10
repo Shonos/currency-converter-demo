@@ -1,6 +1,6 @@
 # Sub-Task 01: Backend Project Setup & Architecture
 
-> **Context**: Use with `master.copilot.md`. This task has **no dependencies** and should be executed first.
+> **Context**: Use with `00-master.copilot.md`. This task has **no dependencies** and should be executed first.
 
 ---
 

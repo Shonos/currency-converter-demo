@@ -1,6 +1,6 @@
 # Sub-Task 06: Backend Testing
 
-> **Context**: Use with `master.copilot.md`. **Depends on**: Sub-tasks 01–05 (all backend implementation must be complete).
+> **Context**: Use with `00-master.copilot.md`. **Depends on**: Sub-tasks 01–05 (all backend implementation must be complete).
 
 ---
 

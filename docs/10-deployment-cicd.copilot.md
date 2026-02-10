@@ -1,6 +1,6 @@
 # Sub-Task 10: Deployment, CI/CD & Documentation
 
-> **Context**: Use with `master.copilot.md`. **Depends on**: All previous sub-tasks should be complete.
+> **Context**: Use with `00-master.copilot.md`. **Depends on**: All previous sub-tasks should be complete.
 
 ---
 

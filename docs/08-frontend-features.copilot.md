@@ -1,6 +1,6 @@
 # Sub-Task 08: Frontend Core Features
 
-> **Context**: Use with `master.copilot.md`. **Depends on**: Sub-task 07 (frontend setup must be complete).
+> **Context**: Use with `00-master.copilot.md`. **Depends on**: Sub-task 07 (frontend setup must be complete).
 
 ---
 

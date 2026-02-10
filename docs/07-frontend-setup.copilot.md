@@ -1,6 +1,6 @@
 # Sub-Task 07: Frontend Project Setup
 
-> **Context**: Use with `master.copilot.md`. This task has **no backend dependencies** and can run in parallel with backend tasks.
+> **Context**: Use with `00-master.copilot.md`. This task has **no backend dependencies** and can run in parallel with backend tasks.
 
 ---
 

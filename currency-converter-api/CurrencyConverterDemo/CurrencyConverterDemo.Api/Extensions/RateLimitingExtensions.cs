@@ -62,8 +62,9 @@ public static class RateLimitingExtensions
                 return RateLimitPartition.GetFixedWindowLimiter(ipAddress, _ =>
                     new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 5,  // Only 5 login attempts per window
-                        Window = TimeSpan.FromMinutes(5),
+                        PermitLimit = configuration.GetValue<int>("RateLimiting:Auth:PermitLimit", 5),
+                        Window = TimeSpan.FromMinutes(
+                            configuration.GetValue<int>("RateLimiting:Auth:WindowMinutes", 5)),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0  // No queuing for auth endpoints
                     });
