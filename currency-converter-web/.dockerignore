@@ -17,6 +17,15 @@ build
 
 # Testing
 coverage
+src/test
+src/**/__tests__
+src/**/*.test.*
+src/**/*.spec.*
+**/*.test.tsx
+**/*.test.ts
+**/*.spec.tsx
+**/*.spec.ts
+vitest.config.ts
 
 # IDE
 .vscode

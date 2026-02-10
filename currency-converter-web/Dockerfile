@@ -12,7 +12,14 @@ RUN npm ci --only=production && \
 
 # Stage 3: Build - Build the application
 FROM dependencies AS build
+# Copy source files (excluding test files handled by .dockerignore)
 COPY . .
+# Remove test files and setup that aren't needed for production build
+RUN find src -type d -name "__tests__" -exec rm -rf {} + || true
+RUN find src -type f \( -name "*.test.*" -o -name "*.spec.*" \) -delete || true
+RUN rm -rf src/test || true
+# Set API URL for Docker build - use relative path for nginx proxy
+RUN echo "VITE_API_BASE_URL=/api" > .env.production.local
 RUN npm run build
 
 # Stage 4: Test - Run tests (optional target)
