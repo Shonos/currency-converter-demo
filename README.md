@@ -194,10 +194,12 @@ All external HTTP calls go through a Polly resilience pipeline:
 
 ### Caching
 
-Dual-provider strategy:
-- **Development:** In-memory cache (`IMemoryCache`)
-- **Production:** Redis distributed cache (`IDistributedCache` via StackExchange.Redis)
-- Cache-aside pattern with configurable TTL (default 60 minutes for exchange rates)
+Flexible caching strategy controlled by configuration:
+- **In-Memory:** `IMemoryCache` (default for Development environment)
+- **Distributed:** Redis via `IDistributedCache` with StackExchange.Redis (default for Production environment)
+- Cache type is controlled by `CacheSettings:Type` ("Memory" or "Distributed") and can be used in any environment
+- Includes automatic fallback to in-memory if Redis connection is unavailable
+- Cache-aside pattern with configurable TTL per data type
 
 ### Security
 
@@ -272,9 +274,9 @@ I started with free models available through GitHub Copilot — **Grok Code Fast
 
 This proved **time-consuming and inconsistent** for a project of this scope. The free models frequently produced outdated patterns, required heavy correction, and lacked the ability to maintain architectural coherence across files.
 
-**Phase 2 — Structured agent-driven development with Claude Opus 4.6**
+**Phase 2 — Structured agent-driven development with Claude Opus 4.6 and Claude Sonnet 4.5**
 
-Seeing hours go by with limited progress, I shifted strategy. I wrote **detailed context documents** — one master file and ten sub-task files — that served as structured prompts for **Claude Opus 4.6** via GitHub Copilot agent mode:
+Seeing hours go by with limited progress, I shifted strategy. I used **Claude Opus 4.6** to generate **detailed context documents** — one master file and ten sub-task files (the `.copilot.md` files numbered 00 to 10). These documents served as structured prompts for **Claude Sonnet 4.5** via GitHub Copilot agent mode. Each subtask was then implemented by Claude Sonnet 4.5 in a separate agent session:
 
 | Document | Scope |
 |----------|-------|
@@ -336,6 +338,7 @@ My workflow is: **design the architecture → write detailed specs → let AI im
 | In-memory pagination of historical rates | Simple — Frankfurter returns all dates, we paginate in-memory | Memory-intensive for very large date ranges |
 | Single currency provider | Simple implementation, clean factory pattern ready for extension | No failover if Frankfurter is down |
 | Excluded currencies as constants | Fast lookups, easy to maintain | Requires code change to modify the list |
+| Single-level cache (Redis OR memory) | Simple implementation, clear separation of concerns | No multi-level caching (L1 in-memory + L2 distributed) — can't benefit from local cache speed with distributed cache consistency |
 
 ---
 
