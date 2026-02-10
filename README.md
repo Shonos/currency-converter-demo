@@ -214,6 +214,26 @@ Flexible caching strategy controlled by configuration:
 - Correlation ID middleware for request tracing
 - Health check endpoints (`/health`) for Redis and upstream API
 
+### Horizontal Scaling
+
+The API is designed to scale horizontally across multiple instances:
+
+**Stateless API Design**
+- JWT tokens are self-contained with no server-side session storage
+- No in-process state that would prevent running multiple instances
+- Each API instance can independently serve requests
+
+**Distributed Cache Strategy**
+- Production-ready `IDistributedCache` implementation with Redis
+- Shared cache across all API instances ensures consistency
+- Configuration already supports distributed caching via `CacheSettings:Type`
+- Only requires Redis connection string to enable
+
+**Rate Limiting Considerations**
+- Current implementation uses in-memory rate limiting (per-instance)
+- For true distributed rate limiting at scale, integrate Redis-backed rate limiter (e.g., `RedisRateLimiting` package)
+- This ensures rate limits apply across all API instances, not per-instance
+
 ### Frontend
 
 - **React 19** with TypeScript in strict mode
