@@ -42,11 +42,12 @@ describe('LatestRatesPage', () => {
     render(<LatestRatesPage />);
 
     // Should show spinner initially
-    expect(screen.getByRole('status')).toBeInTheDocument();
+    const spinners = screen.getAllByRole('status');
+    expect(spinners.length).toBeGreaterThan(0);
 
     // Then show data
     await waitFor(() => {
-      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(screen.queryAllByRole('status').length).toBe(0);
     });
   });
 

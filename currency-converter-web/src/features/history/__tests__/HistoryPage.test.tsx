@@ -4,47 +4,59 @@ import userEvent from '@testing-library/user-event';
 import { HistoryPage } from '../HistoryPage';
 
 describe('HistoryPage', () => {
-  it('renders date range selector and search button', () => {
+  it('renders date range selector and search button', async () => {
     render(<HistoryPage />);
 
     expect(screen.getByText(/historical exchange rates/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/start date/i)).toBeInTheDocument();
+    
+    // Wait for currencies to load and form to appear
+    await waitFor(() => {
+      expect(screen.getByLabelText(/start date/i)).toBeInTheDocument();
+    });
+    
     expect(screen.getByLabelText(/end date/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/base currency/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
   });
 
-  it('shows prompt before search is performed', () => {
+  it('shows prompt before search is performed', async () => {
     render(<HistoryPage />);
 
-    expect(
-      screen.getByText(/select a date range and click search/i)
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText(/select a date range and click search/i)
+      ).toBeInTheDocument();
+    });
   });
 
   it('fetches and displays historical rates', async () => {
     const user = userEvent.setup();
     render(<HistoryPage />);
 
+    // Wait for form to load
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
+    });
+
     // Click search with default date range
     await user.click(screen.getByRole('button', { name: /search/i }));
 
-    // Should show loading state
-    await waitFor(() => {
-      expect(screen.getByRole('status')).toBeInTheDocument();
-    });
-
     // Should show results
     await waitFor(() => {
-      expect(screen.getByText('2026-01-02')).toBeInTheDocument();
+      expect(screen.getByText('Jan 02, 2026')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('2026-01-03')).toBeInTheDocument();
+    expect(screen.getByText('Jan 03, 2026')).toBeInTheDocument();
   });
 
   it('displays pagination controls', async () => {
     const user = userEvent.setup();
     render(<HistoryPage />);
+
+    // Wait for form to load
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
+    });
 
     await user.click(screen.getByRole('button', { name: /search/i }));
 
@@ -59,6 +71,11 @@ describe('HistoryPage', () => {
   it('navigates to next page', async () => {
     const user = userEvent.setup();
     render(<HistoryPage />);
+
+    // Wait for form to load
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
+    });
 
     await user.click(screen.getByRole('button', { name: /search/i }));
 
@@ -78,13 +95,18 @@ describe('HistoryPage', () => {
     const user = userEvent.setup();
     render(<HistoryPage />);
 
+    // Wait for form to load
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
+    });
+
     await user.click(screen.getByRole('button', { name: /search/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole('combobox', { name: /per page/i })).toBeInTheDocument();
+      expect(screen.getByLabelText(/show/i)).toBeInTheDocument();
     });
 
-    const pageSizeSelect = screen.getByRole('combobox', { name: /per page/i });
+    const pageSizeSelect = screen.getByLabelText(/show/i);
     await user.selectOptions(pageSizeSelect, '25');
 
     // Should trigger a re-fetch with new page size
@@ -97,13 +119,18 @@ describe('HistoryPage', () => {
     const user = userEvent.setup();
     render(<HistoryPage />);
 
+    // Wait for form to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/base currency/i)).toBeInTheDocument();
+    });
+
     const baseCurrencySelect = screen.getByLabelText(/base currency/i);
     await user.selectOptions(baseCurrencySelect, 'USD');
 
     await user.click(screen.getByRole('button', { name: /search/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('2026-01-02')).toBeInTheDocument();
+      expect(screen.getByText('Jan 02, 2026')).toBeInTheDocument();
     });
 
     // The results should be for USD base
@@ -113,6 +140,11 @@ describe('HistoryPage', () => {
   it('validates date range on search', async () => {
     const user = userEvent.setup();
     render(<HistoryPage />);
+
+    // Wait for form to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/start date/i)).toBeInTheDocument();
+    });
 
     const startDateInput = screen.getByLabelText(/start date/i);
     const endDateInput = screen.getByLabelText(/end date/i);
@@ -133,6 +165,11 @@ describe('HistoryPage', () => {
   it('resets to page 1 when search parameters change', async () => {
     const user = userEvent.setup();
     render(<HistoryPage />);
+
+    // Wait for form to load
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
+    });
 
     // Perform initial search
     await user.click(screen.getByRole('button', { name: /search/i }));

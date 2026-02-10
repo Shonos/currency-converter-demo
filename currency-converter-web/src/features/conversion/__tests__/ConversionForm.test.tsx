@@ -26,12 +26,13 @@ describe('ConversionForm', () => {
     render(<ConversionForm onConvert={mockOnConvert} />);
 
     await waitFor(() => {
-      expect(screen.getByText('EUR - Euro')).toBeInTheDocument();
+      const options = screen.getAllByText('EUR - Euro');
+      expect(options.length).toBeGreaterThan(0);
     });
 
-    expect(screen.getByText('USD - United States Dollar')).toBeInTheDocument();
-    expect(screen.getByText('GBP - British Pound')).toBeInTheDocument();
-    expect(screen.getByText('JPY - Japanese Yen')).toBeInTheDocument();
+    expect(screen.getAllByText('USD - United States Dollar').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('GBP - British Pound').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('JPY - Japanese Yen').length).toBeGreaterThan(0);
   });
 
   it('performs conversion and calls onConvert', async () => {
@@ -74,7 +75,7 @@ describe('ConversionForm', () => {
     await user.click(screen.getByRole('button', { name: /convert/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/amount must be greater than zero/i)).toBeInTheDocument();
+      expect(screen.getByText(/amount must be greater than 0/i)).toBeInTheDocument();
     });
 
     expect(mockOnConvert).not.toHaveBeenCalled();

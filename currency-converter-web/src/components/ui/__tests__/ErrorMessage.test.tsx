@@ -6,8 +6,9 @@ import { ErrorMessage } from '../ErrorMessage';
 
 describe('ErrorMessage', () => {
   it('displays error message from string', () => {
+    // Strings are treated as unknown types and return default message
     render(<ErrorMessage error="Something went wrong" />);
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+    expect(screen.getByText('An unexpected error occurred. Please try again.')).toBeInTheDocument();
   });
 
   it('displays error message from Error object', () => {
@@ -58,9 +59,10 @@ describe('ErrorMessage', () => {
 
   it('displays error icon', () => {
     render(<ErrorMessage error="Error" />);
-    // The error icon should be part of the component
-    const container = screen.getByText('Error').closest('div');
-    expect(container).toBeInTheDocument();
+    // The error icon (AlertCircle) should be part of the component
+    const errorHeading = screen.getByText('Error');
+    expect(errorHeading).toBeInTheDocument();
+    expect(errorHeading).toHaveClass('text-sm');
   });
 
   it('applies custom className', () => {

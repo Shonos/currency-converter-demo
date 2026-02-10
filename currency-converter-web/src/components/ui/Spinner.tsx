@@ -13,7 +13,7 @@ export const Spinner: React.FC<SpinnerProps> = ({ size = 'md' }) => {
   };
 
   return (
-    <div className="flex justify-center items-center">
+    <div className="flex justify-center items-center" role="status" aria-label="Loading">
       <Loader2 className={`${sizeClasses[size]} animate-spin text-blue-600`} />
     </div>
   );

@@ -6,7 +6,11 @@ import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { getErrorMessage } from '@/utils/errorHandling';
 
-export const LoginForm: React.FC = () => {
+interface LoginFormProps {
+  onSuccess?: () => void;
+}
+
+export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -22,12 +26,25 @@ export const LoginForm: React.FC = () => {
 
     try {
       await login(username, password);
+      if (onSuccess) {
+        onSuccess();
+      }
       navigate('/convert');
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
+  };
+  
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUsername(e.target.value);
+    if (error) setError('');
+  };
+  
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+    if (error) setError('');
   };
 
   return (
@@ -37,7 +54,7 @@ export const LoginForm: React.FC = () => {
           label="Username"
           type="text"
           value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          onChange={handleUsernameChange}
           placeholder="Enter username"
           required
         />
@@ -45,13 +62,13 @@ export const LoginForm: React.FC = () => {
           label="Password"
           type="password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={handlePasswordChange}
           placeholder="Enter password"
           required
         />
         {error && <p className="text-sm text-red-600">{error}</p>}
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? 'Logging in...' : 'Login'}
+          {loading ? 'Logging in...' : 'Log In'}
         </Button>
         <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
           <p className="font-medium text-blue-900">Demo Credentials:</p>
