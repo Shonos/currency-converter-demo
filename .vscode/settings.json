@@ -3,6 +3,7 @@
         "dotnet add": true,
         "dotnet build": true,
         "dotnet run": true,
-        "dotnet test": true
+        "dotnet test": true,
+        "docker exec": true
     }
 }
