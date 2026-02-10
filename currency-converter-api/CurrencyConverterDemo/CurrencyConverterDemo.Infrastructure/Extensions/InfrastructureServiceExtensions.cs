@@ -2,6 +2,7 @@ using CurrencyConverterDemo.Domain.Interfaces;
 using CurrencyConverterDemo.Infrastructure.Caching;
 using CurrencyConverterDemo.Infrastructure.Configuration;
 using CurrencyConverterDemo.Infrastructure.Factories;
+using CurrencyConverterDemo.Infrastructure.Http;
 using CurrencyConverterDemo.Infrastructure.Providers.Frankfurter;
 using CurrencyConverterDemo.Infrastructure.Resilience;
 using Microsoft.Extensions.Caching.Memory;
@@ -35,6 +36,13 @@ public static class InfrastructureServiceExtensions
         services.Configure<ResilienceSettings>(
             configuration.GetSection("ResilienceSettings"));
 
+        // Register HttpContextAccessor for delegating handlers
+        services.AddHttpContextAccessor();
+
+        // Register delegating handlers
+        services.AddTransient<CorrelationIdDelegatingHandler>();
+        services.AddTransient<HttpLoggingDelegatingHandler>();
+
         // Register memory cache
         services.AddMemoryCache();
 
@@ -54,7 +62,7 @@ public static class InfrastructureServiceExtensions
             .GetSection("ResilienceSettings")
             .Get<ResilienceSettings>() ?? new ResilienceSettings();
 
-        // Register named Frankfurter HTTP client with resilience policies
+        // Register named Frankfurter HTTP client with resilience policies and delegating handlers
         services.AddHttpClient("FrankfurterApiClient", (serviceProvider, client) =>
         {
             var settings = configuration
@@ -64,6 +72,8 @@ public static class InfrastructureServiceExtensions
             client.BaseAddress = new Uri(settings.BaseUrl);
             client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
         })
+        .AddHttpMessageHandler<CorrelationIdDelegatingHandler>()
+        .AddHttpMessageHandler<HttpLoggingDelegatingHandler>()
         .AddResiliencePolicies(resilienceSettings);
 
         // Register FrankfurterApiClient as a service

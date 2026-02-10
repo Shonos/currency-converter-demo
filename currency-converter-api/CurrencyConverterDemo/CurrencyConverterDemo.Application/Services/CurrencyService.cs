@@ -3,6 +3,7 @@ using CurrencyConverterDemo.Application.Exceptions;
 using CurrencyConverterDemo.Application.Validators;
 using CurrencyConverterDemo.Domain.Constants;
 using CurrencyConverterDemo.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace CurrencyConverterDemo.Application.Services;
 
@@ -12,18 +13,27 @@ namespace CurrencyConverterDemo.Application.Services;
 public class CurrencyService : ICurrencyService
 {
     private readonly ICurrencyProviderFactory _providerFactory;
+    private readonly ILogger<CurrencyService> _logger;
 
-    public CurrencyService(ICurrencyProviderFactory providerFactory)
+    public CurrencyService(
+        ICurrencyProviderFactory providerFactory,
+        ILogger<CurrencyService> logger)
     {
         _providerFactory = providerFactory;
+        _logger = logger;
     }
 
     public async Task<LatestRatesResponse> GetLatestRatesAsync(
         string baseCurrency,
         CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("Getting latest rates for {BaseCurrency}", baseCurrency);
+        
         var provider = _providerFactory.GetDefaultProvider();
         var result = await provider.GetLatestRatesAsync(baseCurrency, cancellationToken);
+
+        _logger.LogInformation("Retrieved {RateCount} exchange rates for {BaseCurrency} as of {Date}", 
+            result.Rates.Count, result.Base, result.Date);
 
         return new LatestRatesResponse
         {
@@ -37,10 +47,15 @@ public class CurrencyService : ICurrencyService
         ConversionRequest request,
         CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation(
+            "Converting {Amount} {FromCurrency} to {ToCurrency}", 
+            request.Amount, request.From, request.To);
+
         // Validate currencies against business rules
         var invalidCurrency = CurrencyValidator.GetFirstInvalid(request.From, request.To);
         if (invalidCurrency != null)
         {
+            _logger.LogWarning("Excluded currency rejected: {CurrencyCode}", invalidCurrency);
             throw new CurrencyNotSupportedException(invalidCurrency);
         }
 
@@ -50,6 +65,10 @@ public class CurrencyService : ICurrencyService
             request.To,
             request.Amount,
             cancellationToken);
+
+        _logger.LogInformation(
+            "Conversion complete: {Amount} {From} = {ConvertedAmount} {To} at rate {Rate}", 
+            result.Amount, result.From, result.ConvertedAmount, result.To, result.Rate);
 
         return new ConversionResponse
         {
@@ -66,6 +85,10 @@ public class CurrencyService : ICurrencyService
         HistoricalRatesRequest request,
         CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation(
+            "Fetching historical rates for {BaseCurrency} from {StartDate} to {EndDate}, page {Page}", 
+            request.Base, request.StartDate, request.EndDate, request.Page);
+
         var provider = _providerFactory.GetDefaultProvider();
         var result = await provider.GetHistoricalRatesAsync(
             request.Base,
@@ -90,6 +113,10 @@ public class CurrencyService : ICurrencyService
             Rates = new Dictionary<string, decimal>(result.Rates[date])
         }).ToList();
 
+        _logger.LogInformation(
+            "Retrieved {TotalCount} historical records for {BaseCurrency}, returning page {Page} of {TotalPages}", 
+            totalCount, result.Base, page, totalPages);
+
         return new HistoricalRatesResponse
         {
             Base = result.Base,
@@ -108,6 +135,8 @@ public class CurrencyService : ICurrencyService
     public async Task<CurrenciesResponse> GetCurrenciesAsync(
         CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("Fetching currencies list");
+        
         var provider = _providerFactory.GetDefaultProvider();
         var result = await provider.GetCurrenciesAsync(cancellationToken);
 
@@ -121,6 +150,9 @@ public class CurrencyService : ICurrencyService
             })
             .OrderBy(c => c.Code)
             .ToList();
+
+        _logger.LogInformation("Retrieved {CurrencyCount} supported currencies (excluded: {ExcludedCount})", 
+            currencies.Count, result.Count - currencies.Count);
 
         return new CurrenciesResponse
         {
