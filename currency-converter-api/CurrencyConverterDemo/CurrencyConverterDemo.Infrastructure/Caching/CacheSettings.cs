@@ -6,6 +6,11 @@ namespace CurrencyConverterDemo.Infrastructure.Caching;
 public class CacheSettings
 {
     /// <summary>
+    /// Gets or sets the cache type (Memory or Distributed).
+    /// </summary>
+    public string Type { get; set; } = "Memory";
+
+    /// <summary>
     /// Gets or sets the cache duration for latest rates in minutes.
     /// </summary>
     public int LatestRatesMinutes { get; set; } = 5;

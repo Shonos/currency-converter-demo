@@ -46,15 +46,32 @@ public static class InfrastructureServiceExtensions
         // Register memory cache
         services.AddMemoryCache();
 
-        // Optional: Register distributed cache (Redis/Valkey) if configured
-        var redisConnection = configuration.GetConnectionString("Redis");
-        if (!string.IsNullOrEmpty(redisConnection))
+        // Register cache service based on configuration
+        var cacheType = configuration.GetValue<string>("CacheSettings:Type") ?? "Memory";
+        
+        if (cacheType.Equals("Distributed", StringComparison.OrdinalIgnoreCase))
         {
-            services.AddStackExchangeRedisCache(options =>
+            // Register distributed cache (Redis/Valkey) if configured
+            var redisConnection = configuration.GetConnectionString("Redis");
+            if (!string.IsNullOrEmpty(redisConnection))
             {
-                options.Configuration = redisConnection;
-                options.InstanceName = "CurrencyConverter:";
-            });
+                services.AddStackExchangeRedisCache(options =>
+                {
+                    options.Configuration = redisConnection;
+                    options.InstanceName = "CurrencyConverter:";
+                });
+                services.AddSingleton<ICacheService, DistributedCacheService>();
+            }
+            else
+            {
+                // Fallback to memory cache if Redis not configured
+                services.AddSingleton<ICacheService, MemoryCacheService>();
+            }
+        }
+        else
+        {
+            // Use in-memory cache
+            services.AddSingleton<ICacheService, MemoryCacheService>();
         }
 
         // Get resilience settings for HttpClient configuration
@@ -86,7 +103,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<ICurrencyProvider>(sp =>
         {
             var innerProvider = sp.GetRequiredService<FrankfurterCurrencyProvider>();
-            var cache = sp.GetRequiredService<IMemoryCache>();
+            var cache = sp.GetRequiredService<ICacheService>();
             var cacheSettings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CacheSettings>>();
             var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<CachedCurrencyProvider>>();
 
