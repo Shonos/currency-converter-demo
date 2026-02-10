@@ -54,8 +54,8 @@ public static class InfrastructureServiceExtensions
             .GetSection("ResilienceSettings")
             .Get<ResilienceSettings>() ?? new ResilienceSettings();
 
-        // Register Frankfurter HTTP client with resilience policies
-        services.AddHttpClient<FrankfurterApiClient>((serviceProvider, client) =>
+        // Register named Frankfurter HTTP client with resilience policies
+        services.AddHttpClient("FrankfurterApiClient", (serviceProvider, client) =>
         {
             var settings = configuration
                 .GetSection("CurrencyProvider:Frankfurter")
@@ -65,6 +65,9 @@ public static class InfrastructureServiceExtensions
             client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
         })
         .AddResiliencePolicies(resilienceSettings);
+
+        // Register FrankfurterApiClient as a service
+        services.AddScoped<FrankfurterApiClient>();
 
         // Register the base currency provider (without caching)
         services.AddScoped<FrankfurterCurrencyProvider>();

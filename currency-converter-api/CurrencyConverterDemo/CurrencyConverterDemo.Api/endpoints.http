@@ -1,65 +1,92 @@
 ### Currency Converter API - Endpoint Tests
-### Base URL: https://localhost:7123 (adjust port as needed)
+### Base URL: https://localhost:7241 (adjust port as needed)
 
-@baseUrl = https://localhost:7123
+@baseUrl = https://localhost:7241
 @apiVersion = v1
+
+### 0. Login to get JWT token (use demo credentials: admin/Admin123! or user/User123!)
+# @name login
+POST {{baseUrl}}/api/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "Admin123!"
+}
+
+### Automatically extract token from login response
+@authToken = Bearer {{login.response.body.$.token}}
 
 ### 1. Get all currencies (public endpoint)
 GET {{baseUrl}}/api/{{apiVersion}}/currencies
 Accept: application/json
 
-### 2. Get latest exchange rates (default base: EUR)
+### 2. Get latest exchange rates (default base: EUR) - Requires Auth
 GET {{baseUrl}}/api/{{apiVersion}}/exchange-rates/latest
+Authorization: {{authToken}}
 Accept: application/json
 
-### 3. Get latest exchange rates with custom base
+### 3. Get latest exchange rates with custom base - Requires Auth
 GET {{baseUrl}}/api/{{apiVersion}}/exchange-rates/latest?baseCurrency=USD
+Authorization: {{authToken}}
 Accept: application/json
 
-### 4. Convert currency (EUR to USD)
+### 4. Convert currency (EUR to USD) - Requires Auth
 GET {{baseUrl}}/api/{{apiVersion}}/exchange-rates/convert?from=EUR&to=USD&amount=100
+Authorization: {{authToken}}
 Accept: application/json
 
-### 5. Convert currency (USD to GBP)
+### 5. Convert currency (USD to GBP) - Requires Auth
 GET {{baseUrl}}/api/{{apiVersion}}/exchange-rates/convert?from=USD&to=GBP&amount=250.50
+Authorization: {{authToken}}
 Accept: application/json
 
-### 6. Convert with excluded currency (should return 400)
+### 6. Convert with excluded currency (should return 400) - Requires Auth
 GET {{baseUrl}}/api/{{apiVersion}}/exchange-rates/convert?from=EUR&to=TRY&amount=100
+Authorization: {{authToken}}
 Accept: application/json
 
-### 7. Convert with another excluded currency (should return 400)
+### 7. Convert with another excluded currency (should return 400) - Requires Auth
 GET {{baseUrl}}/api/{{apiVersion}}/exchange-rates/convert?from=PLN&to=USD&amount=100
+Authorization: {{authToken}}
 Accept: application/json
 
-### 8. Convert with invalid amount (should return 400)
+### 8. Convert with invalid amount (should return 400) - Requires Auth
 GET {{baseUrl}}/api/{{apiVersion}}/exchange-rates/convert?from=EUR&to=USD&amount=0
+Authorization: {{authToken}}
 Accept: application/json
 
-### 9. Convert with same currency (should return 400)
+### 9. Convert with same currency (should return 400) - Requires Auth
 GET {{baseUrl}}/api/{{apiVersion}}/exchange-rates/convert?from=EUR&to=EUR&amount=100
+Authorization: {{authToken}}
 Accept: application/json
 
-### 10. Get historical rates (default pagination)
+### 10. Get historical rates (default pagination) - Requires Auth
 GET {{baseUrl}}/api/{{apiVersion}}/exchange-rates/history?baseCurrency=EUR&startDate=2024-01-01&endDate=2024-01-31
+Authorization: {{authToken}}
 Accept: application/json
 
-### 11. Get historical rates with custom pagination
+### 11. Get historical rates with custom pagination - Requires Auth
 GET {{baseUrl}}/api/{{apiVersion}}/exchange-rates/history?baseCurrency=USD&startDate=2024-01-01&endDate=2024-01-15&page=1&pageSize=5
+Authorization: {{authToken}}
 Accept: application/json
 
-### 12. Get historical rates - page 2
+### 12. Get historical rates - page 2 - Requires Auth
 GET {{baseUrl}}/api/{{apiVersion}}/exchange-rates/history?baseCurrency=EUR&startDate=2024-01-01&endDate=2024-01-31&page=2&pageSize=10
+Authorization: {{authToken}}
 Accept: application/json
 
-### 13. Historical rates with invalid date range (should return 400)
+### 13. Historical rates with invalid date range (should return 400) - Requires Auth
 GET {{baseUrl}}/api/{{apiVersion}}/exchange-rates/history?baseCurrency=EUR&startDate=2024-01-31&endDate=2024-01-01
+Authorization: {{authToken}}
 Accept: application/json
 
-### 14. Historical rates with date range > 365 days (should return 400)
+### 14. Historical rates with date range > 365 days (should return 400) - Requires Auth
 GET {{baseUrl}}/api/{{apiVersion}}/exchange-rates/history?baseCurrency=EUR&startDate=2023-01-01&endDate=2024-12-31
+Authorization: {{authToken}}
 Accept: application/json
 
-### 15. Historical rates with invalid page size (should return 400)
+### 15. Historical rates with invalid page size (should return 400) - Requires Auth
 GET {{baseUrl}}/api/{{apiVersion}}/exchange-rates/history?baseCurrency=EUR&startDate=2024-01-01&endDate=2024-01-31&pageSize=100
+Authorization: {{authToken}}
 Accept: application/json

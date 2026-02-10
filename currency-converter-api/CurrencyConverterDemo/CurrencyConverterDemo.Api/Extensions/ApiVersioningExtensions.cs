@@ -1,8 +1,7 @@
 using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
-using Microsoft.AspNetCore.OpenApi;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.OpenApi;
+
+namespace CurrencyConverterDemo.Api.Extensions;
 
 public static class ApiVersioningExtensions
 {

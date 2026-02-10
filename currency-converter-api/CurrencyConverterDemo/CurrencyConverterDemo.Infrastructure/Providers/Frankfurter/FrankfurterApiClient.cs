@@ -5,15 +5,16 @@ using CurrencyConverterDemo.Infrastructure.Providers.Frankfurter.Models;
 namespace CurrencyConverterDemo.Infrastructure.Providers.Frankfurter;
 
 /// <summary>
-/// Typed HTTP client for the Frankfurter API.
+/// HTTP client for the Frankfurter API using IHttpClientFactory.
 /// </summary>
 public class FrankfurterApiClient
 {
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private const string ClientName = "FrankfurterApiClient";
 
-    public FrankfurterApiClient(HttpClient httpClient)
+    public FrankfurterApiClient(IHttpClientFactory httpClientFactory)
     {
-        _httpClient = httpClient;
+        _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
     }
 
     /// <summary>
@@ -23,9 +24,11 @@ public class FrankfurterApiClient
         string baseCurrency,
         CancellationToken cancellationToken = default)
     {
+        var httpClient = _httpClientFactory.CreateClient(ClientName);
+        
         try
         {
-            var response = await _httpClient.GetAsync(
+            var response = await httpClient.GetAsync(
                 $"latest?base={baseCurrency}",
                 cancellationToken);
 
@@ -51,12 +54,14 @@ public class FrankfurterApiClient
         DateOnly endDate,
         CancellationToken cancellationToken = default)
     {
+        var httpClient = _httpClientFactory.CreateClient(ClientName);
+        
         try
         {
             var startStr = startDate.ToString("yyyy-MM-dd");
             var endStr = endDate.ToString("yyyy-MM-dd");
 
-            var response = await _httpClient.GetAsync(
+            var response = await httpClient.GetAsync(
                 $"{startStr}..{endStr}?base={baseCurrency}",
                 cancellationToken);
 
@@ -79,9 +84,11 @@ public class FrankfurterApiClient
     public async Task<Dictionary<string, string>> GetCurrenciesAsync(
         CancellationToken cancellationToken = default)
     {
+        var httpClient = _httpClientFactory.CreateClient(ClientName);
+        
         try
         {
-            var response = await _httpClient.GetAsync("currencies", cancellationToken);
+            var response = await httpClient.GetAsync("currencies", cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>(

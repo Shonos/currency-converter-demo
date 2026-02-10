@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Http.Resilience;
 using Polly;
 
 namespace CurrencyConverterDemo.Infrastructure.Resilience;

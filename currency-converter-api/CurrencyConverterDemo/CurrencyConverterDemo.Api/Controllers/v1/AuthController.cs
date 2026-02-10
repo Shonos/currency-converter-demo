@@ -4,6 +4,7 @@ using CurrencyConverterDemo.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 
 namespace CurrencyConverterDemo.Api.Controllers.v1;
 
@@ -18,22 +19,19 @@ namespace CurrencyConverterDemo.Api.Controllers.v1;
 public class AuthController : ControllerBase
 {
     private readonly ITokenService _tokenService;
-
-    // Demo users for testing (in production, use Identity or OAuth2)
-    private static readonly Dictionary<string, (string Password, string Role)> DemoUsers = new()
-    {
-        ["admin"] = ("Admin123!", "Admin"),
-        ["user"] = ("User123!", "User"),
-        ["viewer"] = ("Viewer123!", "Viewer")
-    };
+    private readonly Dictionary<string, (string Password, string Role)> _demoUsers;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AuthController"/> class.
     /// </summary>
     /// <param name="tokenService">Token generation service.</param>
-    public AuthController(ITokenService tokenService)
+    /// <param name="demoUserSettings">Demo user configuration.</param>
+    public AuthController(
+        ITokenService tokenService,
+        IOptions<DemoUserSettings> demoUserSettings)
     {
         _tokenService = tokenService ?? throw new ArgumentNullException(nameof(tokenService));
+        _demoUsers = demoUserSettings?.Value?.ParseUsers() ?? new Dictionary<string, (string Password, string Role)>();
     }
 
     /// <summary>
@@ -57,7 +55,7 @@ public class AuthController : ControllerBase
         }
 
         // Validate credentials against demo users
-        if (!DemoUsers.TryGetValue(request.Username, out var userInfo) ||
+        if (!_demoUsers.TryGetValue(request.Username, out var userInfo) ||
             userInfo.Password != request.Password)
         {
             return Unauthorized(new ProblemDetails
@@ -93,7 +91,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult<object> GetDemoUsers()
     {
-        var users = DemoUsers.Select(u => new
+        var users = _demoUsers.Select(u => new
         {
             Username = u.Key,
             Role = u.Value.Role,

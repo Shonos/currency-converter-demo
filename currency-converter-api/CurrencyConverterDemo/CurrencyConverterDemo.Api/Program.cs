@@ -1,5 +1,6 @@
 using CurrencyConverterDemo.Api.Extensions;
 using CurrencyConverterDemo.Api.Middleware;
+using CurrencyConverterDemo.Api.Models;
 using CurrencyConverterDemo.Api.Services;
 using CurrencyConverterDemo.Application.Extensions;
 using CurrencyConverterDemo.Infrastructure.Extensions;
@@ -13,6 +14,12 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 // Add security services
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddApiRateLimiting(builder.Configuration);
+
+// Configure demo users from environment/configuration
+builder.Services.Configure<DemoUserSettings>(options =>
+{
+    options.Users = builder.Configuration.GetValue<string>("DemoUsers") ?? string.Empty;
+});
 
 // Add application services
 builder.Services.AddScoped<ITokenService, TokenService>();
