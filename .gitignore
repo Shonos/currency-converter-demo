@@ -1,2 +1,11 @@
-# Add to .gitignore if not already present
+# Environment files (keep .example files tracked)
 .env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
+
+# But allow .env.example files to be tracked
+!.env.example
+!**/.env.example
