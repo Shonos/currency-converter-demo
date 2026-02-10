@@ -1,4 +1,4 @@
-# Sub-Task 10: Deployment, CI/CD & Documentation
+# Sub-Task 10: Deployment & Containerization Documentation
 
 > **Context**: Use with `00-master.copilot.md`. **Depends on**: All previous sub-tasks should be complete.
 
@@ -6,7 +6,7 @@
 
 ## Objective
 
-Configure multi-environment support, finalize API versioning, create Docker configuration, set up CI/CD pipeline definitions, and write the final README with comprehensive documentation.
+Configure multi-environment support, finalize API versioning, create production-ready Docker configurations with multi-stage builds for testing, building, and runtime deployment, and write comprehensive documentation. The Docker setup will be cloud-agnostic and ready for deployment to AWS ECS, EC2, GCP, Azure App Service, or any container orchestration platform.
 
 ---
 
@@ -139,377 +139,487 @@ Document these design decisions (already implemented or ready):
 
 ---
 
-## 4. Docker Configuration
+## 4. Docker Configuration Strategy
 
-### 4.1 Backend Dockerfile
+### 4.1 Multi-Stage Docker Approach
+
+We'll use **multi-stage Dockerfiles** with named build targets for maximum flexibility:
+
+1. **Build Stage**: Restore dependencies and compile the application
+2. **Test Stage**: Run unit and integration tests (optional target)
+3. **Runtime Stage**: Create minimal production image with only runtime dependencies
+
+This approach allows:
+- **Local Development**: Build and test using `--target test`
+- **CI/CD Validation**: Run tests in containerized environment
+- **Production Deployment**: Deploy optimized runtime image to any cloud provider (AWS, GCP, Azure, etc.)
+- **Single Source of Truth**: One Dockerfile per service, multiple use cases
+
+---
+
+### 4.2 Backend Multi-Stage Dockerfile
 
 ```dockerfile
 # currency-converter-api/Dockerfile
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Stage 1: Base - SDK for building and testing
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS base
 WORKDIR /src
 
-COPY CurrencyConverterDemo/*.slnx .
+# Stage 2: Restore - Restore dependencies separately for better caching
+FROM base AS restore
+COPY CurrencyConverterDemo/*.slnx ./
 COPY CurrencyConverterDemo/CurrencyConverterDemo.Api/*.csproj CurrencyConverterDemo.Api/
 COPY CurrencyConverterDemo/CurrencyConverterDemo.Application/*.csproj CurrencyConverterDemo.Application/
 COPY CurrencyConverterDemo/CurrencyConverterDemo.Domain/*.csproj CurrencyConverterDemo.Domain/
 COPY CurrencyConverterDemo/CurrencyConverterDemo.Infrastructure/*.csproj CurrencyConverterDemo.Infrastructure/
+COPY CurrencyConverterDemo/CurrencyConverterDemo.Tests/*.csproj CurrencyConverterDemo.Tests/
 
 RUN dotnet restore
 
-COPY CurrencyConverterDemo/ .
-RUN dotnet publish CurrencyConverterDemo.Api -c Release -o /app/publish --no-restore
+# Stage 3: Build - Compile the application
+FROM restore AS build
+COPY CurrencyConverterDemo/ ./
+RUN dotnet build CurrencyConverterDemo.Api -c Release --no-restore
 
+# Stage 4: Test - Run tests (optional target)
+FROM build AS test
+RUN dotnet test CurrencyConverterDemo.Tests \
+    -c Release \
+    --no-build \
+    --verbosity normal \
+    --logger "trx;LogFileName=test-results.trx" \
+    /p:CollectCoverage=true \
+    /p:CoverletOutputFormat=cobertura \
+    /p:Threshold=80
+
+# Stage 5: Publish - Create publish output
+FROM build AS publish
+RUN dotnet publish CurrencyConverterDemo.Api \
+    -c Release \
+    -o /app/publish \
+    --no-build \
+    --no-restore
+
+# Stage 6: Runtime - Final minimal production image
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
-COPY --from=build /app/publish .
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Copy published application
+COPY --from=publish /app/publish .
+
+# Create logs directory with proper permissions
+RUN mkdir -p /var/log/currency-converter && \
+    chown -R appuser:appuser /var/log/currency-converter
+
+# Switch to non-root user
+USER appuser
+
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
+
 ENTRYPOINT ["dotnet", "CurrencyConverterDemo.Api.dll"]
 ```
 
-### 4.2 Frontend Dockerfile
+**Usage Examples:**
+
+```bash
+# Build and run tests
+docker build --target test -t currency-api:test .
+
+# Build production image
+docker build --target runtime -t currency-api:latest .
+
+# Build with specific tag
+docker build --target runtime -t currency-api:v1.0.0 .
+
+# Run production container
+docker run -d -p 5000:8080 \
+  -e JwtSettings__Secret="your-secret-key" \
+  -e ASPNETCORE_ENVIRONMENT=Production \
+  --name currency-api \
+  currency-api:latest
+```
+
+---
+
+### 4.3 Frontend Multi-Stage Dockerfile
 
 ```dockerfile
 # currency-converter-web/Dockerfile
-FROM node:20-alpine AS build
+# Stage 1: Base - Node.js for building
+FROM node:20-alpine AS base
 WORKDIR /app
 
+# Stage 2: Dependencies - Install dependencies
+FROM base AS dependencies
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --only=production && \
+    cp -R node_modules /prod_node_modules && \
+    npm ci
 
+# Stage 3: Build - Build the application
+FROM dependencies AS build
 COPY . .
 RUN npm run build
 
+# Stage 4: Test - Run tests (optional target)
+FROM dependencies AS test
+COPY . .
+RUN npm run lint && \
+    npm run test:run && \
+    npm run build
+
+# Stage 5: Runtime - Nginx for serving
 FROM nginx:alpine AS runtime
-COPY --from=build /app/dist /usr/share/nginx/html
+
+# Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy built application
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost/health || exit 1
+
 EXPOSE 80
+
+# Add labels for better container management
+LABEL org.opencontainers.image.title="Currency Converter Web"
+LABEL org.opencontainers.image.description="React frontend for Currency Converter"
+
+CMD ["nginx", "-g", "daemon off;"]
 ```
 
-### 4.3 Docker Compose
+**Frontend nginx.conf:**
+
+```nginx
+# currency-converter-web/nginx.conf
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Gzip compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+    gzip_min_length 1000;
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # Cache static assets
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Health check endpoint
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+
+    # SPA routing - all routes serve index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # API proxy (optional - if same domain needed)
+    location /api {
+        proxy_pass http://api:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+**Usage Examples:**
+
+```bash
+# Build and run tests
+docker build --target test -t currency-web:test .
+
+# Build production image
+docker build --target runtime -t currency-web:latest .
+
+# Run production container
+docker run -d -p 3000:80 \
+  --name currency-web \
+  currency-web:latest
+```
+
+---
+
+### 4.4 Docker Compose for Local Development and Testing
 
 ```yaml
 # docker-compose.yml (root)
 version: '3.8'
 
 services:
+  # Redis for distributed caching (optional but recommended for production)
+  redis:
+    image: redis:7-alpine
+    container_name: currency-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - currency-network
+
+  # Backend API
   api:
     build:
       context: ./currency-converter-api
       dockerfile: Dockerfile
+      target: runtime
+    container_name: currency-api
     ports:
       - "5000:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - JwtSettings__Secret=${JWT_SECRET}
+      - JwtSettings__Secret=${JWT_SECRET:-DevSecret-minimum-32-characters-long-key-here!!}
       - Cors__AllowedOrigin=http://localhost:3000
+      - CacheSettings__Provider=Redis
+      - CacheSettings__RedisConnectionString=redis:6379
+      - CacheSettings__AbsoluteExpirationMinutes=60
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
+    networks:
+      - currency-network
+    restart: unless-stopped
 
+  # Frontend Web
   web:
     build:
       context: ./currency-converter-web
       dockerfile: Dockerfile
+      target: runtime
+    container_name: currency-web
     ports:
       - "3000:80"
     depends_on:
       api:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - currency-network
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  currency-network:
+    driver: bridge
+```
+
+**Docker Compose Commands:**
+
+```bash
+# Build all images
+docker-compose build
+
+# Build and run tests before starting
+docker-compose build --target test
+
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes
+docker-compose down -v
+
+# Restart a specific service
+docker-compose restart api
 ```
 
 ---
 
-## 5. CI/CD Pipeline (GitHub Actions)
-
-### 5.1 Backend CI
+### 4.5 Docker Compose Override for Testing
 
 ```yaml
-# .github/workflows/backend-ci.yml
-name: Backend CI
+# docker-compose.test.yml
+version: '3.8'
 
-on:
-  push:
-    paths: ['currency-converter-api/**']
-  pull_request:
-    paths: ['currency-converter-api/**']
+services:
+  api:
+    build:
+      target: test
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Test
+    command: dotnet test --no-build --verbosity normal
 
-jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Restore
-        working-directory: currency-converter-api/CurrencyConverterDemo
-        run: dotnet restore
-
-      - name: Build
-        working-directory: currency-converter-api/CurrencyConverterDemo
-        run: dotnet build --no-restore --configuration Release
-
-      - name: Test with Coverage
-        working-directory: currency-converter-api/CurrencyConverterDemo
-        run: |
-          dotnet test --no-build --configuration Release \
-            /p:CollectCoverage=true \
-            /p:CoverletOutputFormat=cobertura \
-            /p:CoverletOutput=./TestResults/
-
-      - name: Upload Coverage
-        uses: codecov/codecov-action@v3
-        with:
-          file: '**/TestResults/coverage.cobertura.xml'
-          fail_ci_if_error: false
-
-      - name: Check Coverage Threshold
-        run: |
-          # Parse coverage and fail if below 90%
-          echo "Coverage check - target: 90%"
+  web:
+    build:
+      target: test
+    command: npm run test:run
 ```
 
-### 5.2 Frontend CI
+**Usage:**
 
-```yaml
-# .github/workflows/frontend-ci.yml
-name: Frontend CI
+```bash
+# Run tests in Docker
+docker-compose -f docker-compose.yml -f docker-compose.test.yml up --abort-on-container-exit
 
-on:
-  push:
-    paths: ['currency-converter-web/**']
-  pull_request:
-    paths: ['currency-converter-web/**']
+# Run only API tests
+docker-compose -f docker-compose.test.yml up api
 
-jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: currency-converter-web/package-lock.json
-
-      - name: Install dependencies
-        working-directory: currency-converter-web
-        run: npm ci
-
-      - name: Lint
-        working-directory: currency-converter-web
-        run: npm run lint
-
-      - name: Type Check
-        working-directory: currency-converter-web
-        run: npx tsc --noEmit
-
-      - name: Test
-        working-directory: currency-converter-web
-        run: npm run test:run
-
-      - name: Build
-        working-directory: currency-converter-web
-        run: npm run build
-```
-
-### 5.3 Docker Build & Push (CD)
-
-```yaml
-# .github/workflows/docker-cd.yml
-name: Docker Build & Push
-
-on:
-  push:
-    branches: [main]
-    tags: ['v*']
-
-jobs:
-  build-api:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v5
-        with:
-          context: ./currency-converter-api
-          push: true
-          tags: ghcr.io/${{ github.repository }}/api:${{ github.sha }}
-
-  build-web:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v5
-        with:
-          context: ./currency-converter-web
-          push: true
-          tags: ghcr.io/${{ github.repository }}/web:${{ github.sha }}
+# Run only Web tests
+docker-compose -f docker-compose.test.yml up web
 ```
 
 ---
 
-## 6. Final README.md
+### 4.6 Deployment-Ready Docker Images
 
-The root `README.md` must include:
+The multi-stage approach produces optimized images:
 
-### 6.1 Structure
+**Backend API:**
+- Build stage: ~2GB (includes SDK)
+- Test stage: ~2GB (includes test frameworks)
+- **Runtime stage: ~200MB** (only ASP.NET runtime)
 
-```markdown
-# Currency Converter Demo
-
-## Overview
-Brief description of the platform.
-
-## Architecture
-### System Diagram
-### Backend (ASP.NET Core)
-### Frontend (React)
-### Data Flow
-
-## Setup Instructions
-### Prerequisites
-### Backend Setup
-### Frontend Setup
-### Docker Setup
-### Running Tests
-
-## API Documentation
-### Authentication
-### Endpoints Summary
-### Example Requests
-
-## Architecture Decisions
-### Clean Architecture
-### Resilience Patterns
-### Caching Strategy
-### Security Model
-
-## AI Usage
-### How AI Was Used
-### What Was Validated Manually
-### What Was Not Blindly Accepted
-
-## Testing Strategy
-### Backend Coverage
-### Frontend Coverage
-
-## Assumptions & Trade-offs
-
-## Potential Future Improvements
-
-## License
-```
-
-### 6.2 Key Sections to Write
-
-**AI Usage** (critical for evaluation):
-- List specific areas where AI assisted (e.g., "Generated initial test scaffolding", "Suggested Polly v8 resilience pipeline configuration")
-- Describe manual review process
-- Note design decisions made by the developer
-- Be transparent about what AI did and didn't do
-
-**Assumptions & Trade-offs**:
-- In-memory cache vs distributed (Redis)
-- Hardcoded demo users vs real auth provider
-- In-memory pagination of historical rates
-- Symmetric JWT key for simplicity
-- No database (stateless demo)
-
-**Future Improvements**:
-- Redis distributed cache
-- OAuth2/OpenID Connect with a real identity provider
-- Database for user management
-- WebSocket for real-time rate updates
-- Rate comparison charts/graphs
-- Multi-language support
-- API gateway (e.g., Azure API Management)
+**Frontend Web:**
+- Build stage: ~500MB (includes Node.js and build tools)
+- Test stage: ~500MB (includes test dependencies)
+- **Runtime stage: ~50MB** (only Nginx + static files)
 
 ---
 
-## 7. `.gitignore`
+### 4.7 Cloud Deployment Readiness
 
-Ensure proper `.gitignore` at root:
+These Dockerfiles are ready for deployment to:
 
-```gitignore
-# .NET
-**/bin/
-**/obj/
-*.user
-*.vs/
+**AWS:**
+- **ECS (Fargate/EC2)**: Push images to ECR, create task definitions
+- **EC2**: Pull images and run with docker-compose or standalone
+- **App Runner**: Direct deployment from container registry
+- **EKS**: Deploy with Kubernetes manifests
 
-# Node
-node_modules/
-dist/
-coverage/
+**Google Cloud:**
+- **Cloud Run**: Serverless container deployment
+- **GKE**: Kubernetes deployment
+- **Compute Engine**: VM with Docker
 
-# Environment
-.env.local
-.env*.local
+**Azure:**
+- **Container Instances**: Simple container deployment
+- **App Service**: Container-based web apps
+- **AKS**: Azure Kubernetes Service
 
-# IDE
-.idea/
-.vscode/settings.json
+**General Container Platforms:**
+- **Kubernetes**: Any managed or self-hosted cluster
+- **Docker Swarm**: Native Docker orchestration
+- **Nomad**: HashiCorp's orchestrator
 
-# OS
-Thumbs.db
-.DS_Store
+---
 
-# Logs
-logs/
-*.log
+## 5. Container Registry & Environment Configuration
 
-# Test results
-TestResults/
+### 5.1 Image Tagging Convention
+
+```bash
+# Local development
+currency-api:latest
+currency-web:latest
+
+# Versioned for registry
+<registry>/<repository>:<version>
+# Examples:
+ghcr.io/yourorg/currency-api:1.0.0
+123456789.dkr.ecr.us-east-1.amazonaws.com/currency-api:1.0.0
+```
+
+### 5.2 Environment Variables
+
+**Backend (.env or environment-specific config):**
+```env
+JWT_SECRET=your-secret-key-minimum-32-characters-long
+CORS_ALLOWED_ORIGIN=http://localhost:3000
+CACHE_PROVIDER=Redis
+CACHE_REDIS_CONNECTION=redis:6379
+CACHE_ABSOLUTE_EXPIRATION_MINUTES=60
+ASPNETCORE_ENVIRONMENT=Production
+```
+
+**Frontend (.env):**
+```env
+VITE_API_BASE_URL=http://localhost:5000/api
 ```
 
 ---
 
-## 8. Acceptance Criteria
+## 6. Quick Reference
 
-- [ ] Backend runs correctly in Development, Test, and Production configurations
-- [ ] Frontend builds for development and production environments
-- [ ] Docker Compose starts both services and they communicate correctly
-- [ ] Backend Dockerfile builds and runs successfully
-- [ ] Frontend Dockerfile builds and serves the app
-- [ ] GitHub Actions CI workflows are defined for both backend and frontend
-- [ ] CD workflow builds and pushes Docker images
-- [ ] README.md contains all required sections
-- [ ] AI Usage section is honest and detailed
-- [ ] `.gitignore` covers all generated/sensitive files
-- [ ] API versioning works with v1 prefix
-- [ ] The application is designed for horizontal scaling (documented)
-- [ ] All environment-specific settings are properly separated
+### Build & Run
+```bash
+# Build images
+docker build -t currency-api:latest ./currency-converter-api
+docker build -t currency-web:latest ./currency-converter-web
+
+# Run all services locally
+docker-compose up -d
+
+# Run tests in Docker
+docker-compose -f docker-compose.yml -f docker-compose.test.yml up --abort-on-container-exit
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+### Access Points
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:5000
+- API Docs: http://localhost:5000/swagger (development)
+- Redis: localhost:6379
+
+### Image Optimization
+- Backend runtime: ~200MB ( from ~2GB build image)
+- Frontend runtime: ~50MB (from ~500MB build image)
 
 ---
-
-## 9. Notes for Agent
-
-- Docker files are provided as templates — adjust paths if the actual project structure differs.
-- CI/CD YAML files go in `.github/workflows/` at the repository root.
-- The README should be **comprehensive but scannable** — use tables, code blocks, and headers.
-- The AI Usage section is **mandatory and evaluated** — be specific and honest.
-- **Do NOT** include real secrets or passwords in any committed file.
-- The `.env` file for the frontend should be in `.gitignore` (only `.env.example` committed).
-- Test that `docker-compose up` works end-to-end before marking complete.
-- Verify that the health check endpoint (`/health`) works in the containerized API.
