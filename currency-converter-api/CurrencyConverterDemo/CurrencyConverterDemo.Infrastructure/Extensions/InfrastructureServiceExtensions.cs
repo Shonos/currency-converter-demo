@@ -61,17 +61,20 @@ public static class InfrastructureServiceExtensions
                     options.InstanceName = "CurrencyConverter:";
                 });
                 services.AddSingleton<ICacheService, DistributedCacheService>();
+                services.AddSingleton<ITokenBlacklistService, RedisTokenBlacklistService>();
             }
             else
             {
                 // Fallback to memory cache if Redis not configured
                 services.AddSingleton<ICacheService, MemoryCacheService>();
+                services.AddSingleton<ITokenBlacklistService, InMemoryTokenBlacklistService>();
             }
         }
         else
         {
             // Use in-memory cache
             services.AddSingleton<ICacheService, MemoryCacheService>();
+            services.AddSingleton<ITokenBlacklistService, InMemoryTokenBlacklistService>();
         }
 
         // Get resilience settings for HttpClient configuration

@@ -1,4 +1,5 @@
 using CurrencyConverterDemo.Api.Extensions;
+using CurrencyConverterDemo.Api.Filters;
 using CurrencyConverterDemo.Api.Middleware;
 using CurrencyConverterDemo.Api.Models;
 using CurrencyConverterDemo.Api.Services;
@@ -30,7 +31,11 @@ builder.Services.Configure<DemoUserSettings>(options =>
 builder.Services.AddScoped<ITokenService, TokenService>();
 
 // Add cross-cutting concerns
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    // Add token blacklist filter globally
+    options.Filters.Add<TokenBlacklistFilter>();
+});
 builder.Services.AddApiVersioningServices();
 
 // Add exception handling

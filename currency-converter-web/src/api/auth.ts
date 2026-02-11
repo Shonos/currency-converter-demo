@@ -13,3 +13,10 @@ export const login = async (
   );
   return response.data;
 };
+
+/**
+ * Logout user and invalidate current token on server
+ */
+export const logout = async (): Promise<void> => {
+  await apiClient.post('/api/v1/auth/logout');
+};

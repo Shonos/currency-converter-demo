@@ -348,14 +348,16 @@ My workflow is: **design the architecture → write detailed specs → let AI im
 2. **Frankfurter API is reliable** — Single external dependency with no fallback provider
 3. **Stateless API** — JWT tokens are self-contained; no server-side session state
 4. **No persistent database** — All data comes from the external API and is cached temporarily
+5. **Browser-based clients only** — CORS protection assumes legitimate users access via browsers; non-browser clients (Postman, curl) can bypass CORS
+6. **Token reuse after logout is acceptable for demo** — No token revocation/blacklist; tokens remain valid until expiration even after logout
 
 ### Trade-offs
 
 | Decision | Benefit | Trade-off |
 |----------|---------|-----------|
 | Hardcoded demo users | No database or auth provider dependency | Not production-ready for real users |
-| Symmetric JWT (HMAC) | Simple configuration | Less secure than asymmetric (RS256) with key rotation |
-| In-memory pagination of historical rates | Simple — Frankfurter returns all dates, we paginate in-memory | Memory-intensive for very large date ranges |
+| Symmetric JWT (HMAC) | Simple configuration | Less secure than asymmetric (RS256) with key rotation || Client-side only logout | Simple implementation, no server state | JWT tokens remain valid after logout until expiration; no token revocation/blacklist |
+| CORS-only client validation | Simple configuration | Non-browser clients (API tools, server apps) bypass CORS entirely; no API key or OAuth2 client authentication || In-memory pagination of historical rates | Simple — Frankfurter returns all dates, we paginate in-memory | Memory-intensive for very large date ranges |
 | Single currency provider | Simple implementation, clean factory pattern ready for extension | No failover if Frankfurter is down |
 | Excluded currencies as constants | Fast lookups, easy to maintain | Requires code change to modify the list |
 | Single-level cache (Redis OR memory) | Simple implementation, clear separation of concerns | No multi-level caching (L1 in-memory + L2 distributed) — can't benefit from local cache speed with distributed cache consistency |
@@ -366,10 +368,13 @@ My workflow is: **design the architecture → write detailed specs → let AI im
 
 ### High Priority
 1. **OAuth2 / OpenID Connect** — Replace demo JWT with a real identity provider (Auth0, Azure AD, Keycloak)
-2. **Redis in production** — The distributed cache is implemented and ready; just needs Redis infrastructure
-3. **Database layer** — PostgreSQL or SQL Server for user management, audit logs, and conversion history
-4. **OpenTelemetry** — Replace Serilog-only observability with distributed tracing and metrics
-5. **CI/CD pipeline** — GitHub Actions or Azure DevOps for automated build, test, and deploy
+2. **Token revocation/blacklist** — Redis-backed token blacklist to support real logout and immediate token invalidation
+3. **API key or client credentials** — OAuth2 client authentication to validate which applications can access the API
+4. **Refresh tokens** — Short-lived access tokens + long-lived refresh tokens for better security
+5. **Redis in production** — The distributed cache is implemented and ready; just needs Redis infrastructure
+6. **Database layer** — PostgreSQL or SQL Server for user management, audit logs, and conversion history
+7. **OpenTelemetry** — Replace Serilog-only observability with distributed tracing and metrics
+8. **CI/CD pipeline** — GitHub Actions or Azure DevOps for automated build, test, and deploy
 
 ### Medium Priority
 6. **Real-time rates** — WebSocket/SignalR for live rate updates

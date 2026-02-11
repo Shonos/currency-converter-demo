@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
-import { login as apiLogin } from '@/api/auth';
+import { login as apiLogin, logout as apiLogout } from '@/api/auth';
 import toast from 'react-hot-toast';
 
 interface AuthContextType {
@@ -38,12 +38,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const logout = () => {
-    setToken(null);
-    setRole(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
-    toast.success('Logged out successfully');
+  const logout = async () => {
+    try {
+      // Call server-side logout to blacklist token
+      await apiLogout();
+    } catch (error) {
+      // Log error but still clear local storage
+      console.error('Server logout failed:', error);
+    } finally {
+      // Clear client-side state regardless of server response
+      setToken(null);
+      setRole(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      toast.success('Logged out successfully');
+    }
   };
 
   return (
