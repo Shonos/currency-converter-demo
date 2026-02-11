@@ -17,6 +17,16 @@ Content-Type: application/json
 ### Automatically extract token from login response
 @authToken = Bearer {{login.response.body.$.token}}
 
+### 0.1. Logout (revoke token) - Requires Auth
+POST {{baseUrl}}/api/{{apiVersion}}/auth/logout
+Authorization: {{authToken}}
+Accept: application/json
+
+### 0.2. Try using token after logout (should return 401 - Token Revoked)
+GET {{baseUrl}}/api/{{apiVersion}}/exchange-rates/latest?baseCurrency=USD
+Authorization: {{authToken}}
+Accept: application/json
+
 ### 1. Get all currencies (public endpoint)
 GET {{baseUrl}}/api/{{apiVersion}}/currencies
 Accept: application/json

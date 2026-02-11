@@ -204,6 +204,7 @@ Flexible caching strategy controlled by configuration:
 ### Security
 
 - JWT Bearer authentication with role-based authorization (Admin, User roles)
+- Token revocation/blacklist — Server-side logout invalidates tokens via Redis blacklist (see [token-blacklist-implementation.md](docs/token-blacklist-implementation.md))
 - Rate limiting (built-in ASP.NET Core `RateLimiting`)
 - CORS policy per environment
 - Excluded currencies business rule — TRY, PLN, THB, MXN rejected with HTTP 400
@@ -252,6 +253,7 @@ All exchange rate endpoints require JWT authentication. Authenticate first via t
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | `POST` | `/api/v1/auth/login` | No | Authenticate and receive JWT token |
+| `POST` | `/api/v1/auth/logout` | Yes | Logout and invalidate current token |
 | `GET` | `/api/v1/auth/demo-users` | No | List available demo users |
 | `GET` | `/api/v1/currencies` | Yes | List supported currencies |
 | `GET` | `/api/v1/exchange-rates/latest` | Yes | Latest rates for a base currency |
@@ -325,6 +327,7 @@ Every AI-generated stage went through manual review. Specific things I caught an
 - **Docker port mapping**: Verified .NET 10's default port 8080 requirement was correctly mapped through all Docker and compose configurations
 - **Redis password synchronization**: AI generated mismatched passwords across `.env` files — aligned them manually
 - **Frontend date formatting**: Tests expected ISO dates but components used `date-fns` formatDate — corrected test expectations
+- **Authentication security review**: Reviewed the auth flow from frontend to backend and discovered tokens remained valid after logout. This was a security gap — logout was client-side only. Tasked the agent to create a detailed specification for token invalidation via Redis blacklist, then implemented it (see [token-blacklist-implementation.md](docs/token-blacklist-implementation.md))
 
 ### What I Did NOT Blindly Accept
 
@@ -349,15 +352,15 @@ My workflow is: **design the architecture → write detailed specs → let AI im
 3. **Stateless API** — JWT tokens are self-contained; no server-side session state
 4. **No persistent database** — All data comes from the external API and is cached temporarily
 5. **Browser-based clients only** — CORS protection assumes legitimate users access via browsers; non-browser clients (Postman, curl) can bypass CORS
-6. **Token reuse after logout is acceptable for demo** — No token revocation/blacklist; tokens remain valid until expiration even after logout
 
 ### Trade-offs
 
 | Decision | Benefit | Trade-off |
 |----------|---------|-----------|
 | Hardcoded demo users | No database or auth provider dependency | Not production-ready for real users |
-| Symmetric JWT (HMAC) | Simple configuration | Less secure than asymmetric (RS256) with key rotation || Client-side only logout | Simple implementation, no server state | JWT tokens remain valid after logout until expiration; no token revocation/blacklist |
-| CORS-only client validation | Simple configuration | Non-browser clients (API tools, server apps) bypass CORS entirely; no API key or OAuth2 client authentication || In-memory pagination of historical rates | Simple — Frankfurter returns all dates, we paginate in-memory | Memory-intensive for very large date ranges |
+| Symmetric JWT (HMAC) | Simple configuration | Less secure than asymmetric (RS256) with key rotation |
+| CORS-only client validation | Simple configuration | Non-browser clients (API tools, server apps) bypass CORS entirely; no API key or OAuth2 client authentication |
+| In-memory pagination of historical rates | Simple — Frankfurter returns all dates, we paginate in-memory | Memory-intensive for very large date ranges |
 | Single currency provider | Simple implementation, clean factory pattern ready for extension | No failover if Frankfurter is down |
 | Excluded currencies as constants | Fast lookups, easy to maintain | Requires code change to modify the list |
 | Single-level cache (Redis OR memory) | Simple implementation, clear separation of concerns | No multi-level caching (L1 in-memory + L2 distributed) — can't benefit from local cache speed with distributed cache consistency |
@@ -368,27 +371,26 @@ My workflow is: **design the architecture → write detailed specs → let AI im
 
 ### High Priority
 1. **OAuth2 / OpenID Connect** — Replace demo JWT with a real identity provider (Auth0, Azure AD, Keycloak)
-2. **Token revocation/blacklist** — Redis-backed token blacklist to support real logout and immediate token invalidation
-3. **API key or client credentials** — OAuth2 client authentication to validate which applications can access the API
-4. **Refresh tokens** — Short-lived access tokens + long-lived refresh tokens for better security
-5. **Redis in production** — The distributed cache is implemented and ready; just needs Redis infrastructure
-6. **Database layer** — PostgreSQL or SQL Server for user management, audit logs, and conversion history
-7. **OpenTelemetry** — Replace Serilog-only observability with distributed tracing and metrics
-8. **CI/CD pipeline** — GitHub Actions or Azure DevOps for automated build, test, and deploy
+2. **API key or client credentials** — OAuth2 client authentication to validate which applications can access the API
+3. **Refresh tokens** — Short-lived access tokens + long-lived refresh tokens for better security
+4. **Redis in production** — The distributed cache is implemented and ready; just needs Redis infrastructure
+5. **Database layer** — PostgreSQL or SQL Server for user management, audit logs, and conversion history
+6. **OpenTelemetry** — Replace Serilog-only observability with distributed tracing and metrics
+7. **CI/CD pipeline** — GitHub Actions or Azure DevOps for automated build, test, and deploy
 
 ### Medium Priority
-6. **Real-time rates** — WebSocket/SignalR for live rate updates
-7. **Historical charts** — Visualization with Chart.js or Recharts
-8. **Multiple currency providers** — Add fallback providers using the existing factory pattern
-9. **Export functionality** — CSV/Excel export of historical data
-10. **API response compression** — Gzip/Brotli for large payloads
+8. **Real-time rates** — WebSocket/SignalR for live rate updates
+9. **Historical charts** — Visualization with Chart.js or Recharts
+10. **Multiple currency providers** — Add fallback providers using the existing factory pattern
+11. **Export functionality** — CSV/Excel export of historical data
+12. **API response compression** — Gzip/Brotli for large payloads
 
 ### Low Priority
-11. **Internationalization (i18n)** — Multi-language support with react-i18next
-12. **Dark mode** — User preference toggle
-13. **GraphQL API** — Alternative query interface for flexible data fetching
-14. **Rate change notifications** — Email/SMS alerts for threshold-based rate changes
-15. **Mobile app** — React Native or .NET MAUI companion app
+13. **Internationalization (i18n)** — Multi-language support with react-i18next
+14. **Dark mode** — User preference toggle
+15. **GraphQL API** — Alternative query interface for flexible data fetching
+16. **Rate change notifications** — Email/SMS alerts for threshold-based rate changes
+17. **Mobile app** — React Native or .NET MAUI companion app
 
 ---
 
@@ -440,7 +442,8 @@ currency-converter-demo/
 ├── docs/                           # Architecture & agent context docs
 │   ├── 00-master.copilot.md
 │   ├── 01–10-*.copilot.md
-│   └── distributed-cache-implementation.md
+│   ├── distributed-cache-implementation.md
+│   └── token-blacklist-implementation.md
 ├── currency-converter-api/         # Backend
 │   ├── Dockerfile
 │   └── CurrencyConverterDemo/
