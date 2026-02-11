@@ -24,6 +24,8 @@ A full-stack currency conversion platform demonstrating production-grade archite
 
 The entire stack — API, frontend, and Redis — runs with a single command. No SDKs required.
 
+**Note:** Docker Compose is designed for **local development convenience**. In production, the frontend would typically be deployed to S3/Azure Blob + CDN (CloudFront, Azure CDN, Cloudflare) for better performance and lower cost, while the API remains containerized.
+
 **Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Compose)
 
 ```bash
@@ -244,6 +246,33 @@ The API is designed to scale horizontally across multiple instances:
 - **Axios** HTTP client with interceptors for JWT
 - **Vitest + Testing Library + MSW** for testing
 
+### Deployment Strategy
+
+**Local Development:**
+- Docker Compose orchestrates all services (API, frontend, Redis)
+- Frontend container uses Nginx to serve static files
+- Single `docker-compose up` command for full stack
+
+**Production (Recommended):**
+```
+CI/CD Pipeline → npm run build → S3/Azure Blob/GCS → CloudFront/CDN → Users
+                ↓
+          Docker Build → ECS/AKS/Cloud Run (API only)
+```
+
+**Why CDN for Frontend:**
+- **Cost**: S3 + CloudFront costs pennies vs running containers 24/7
+- **Performance**: Global edge servers vs single origin
+- **Scalability**: CDN handles traffic spikes automatically with zero configuration
+- **Simplicity**: No container orchestration for static files
+
+**Why Containers for Backend:**
+- Stateful services (Redis connection, JWT validation)
+- Business logic requires compute resources
+- Health checks, graceful shutdown, horizontal scaling
+
+The Dockerfile for the frontend exists to support local development parity — ensuring all developers see the same environment. Production deployments would remove the frontend service from `docker-compose.yml` and deploy static assets to object storage + CDN.
+
 ---
 
 ## API Endpoints
@@ -364,6 +393,7 @@ My workflow is: **design the architecture → write detailed specs → let AI im
 | Single currency provider | Simple implementation, clean factory pattern ready for extension | No failover if Frankfurter is down |
 | Excluded currencies as constants | Fast lookups, easy to maintain | Requires code change to modify the list |
 | Single-level cache (Redis OR memory) | Simple implementation, clear separation of concerns | No multi-level caching (L1 in-memory + L2 distributed) — can't benefit from local cache speed with distributed cache consistency |
+| Dockerized frontend for local dev only | Full-stack parity in Docker Compose, no SDK installation required | In production, S3/CDN is cheaper, faster, and simpler — Dockerfile/Nginx not needed for static SPA |
 
 ---
 
