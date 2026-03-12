@@ -19,7 +19,7 @@ RUN find src -type d -name "__tests__" -exec rm -rf {} + || true
 RUN find src -type f \( -name "*.test.*" -o -name "*.spec.*" \) -delete || true
 RUN rm -rf src/test || true
 # Set API URL for Docker build - use relative path for nginx proxy
-RUN echo "VITE_API_BASE_URL=/api" > .env.production.local
+RUN echo "VITE_CURRENCY_CONVERTER_API_URL=/" > .env.production.local
 RUN npm run build
 
 # Stage 4: Test - Run tests (optional target)

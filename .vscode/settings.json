@@ -4,6 +4,8 @@
         "dotnet build": true,
         "dotnet run": true,
         "dotnet test": true,
-        "docker exec": true
+        "docker exec": true,
+        "docker run": true,
+        "Test-Path": true
     }
 }

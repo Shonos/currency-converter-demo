@@ -46,3 +46,10 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Environment files (will be created by Dockerfile)
+.env
+.env.production
+.env.development
+.env.local
+.env.*.local

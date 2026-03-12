@@ -20,6 +20,8 @@ A full-stack currency conversion platform demonstrating production-grade archite
 
 ## Setup Instructions
 
+> 📖 **Environment Configuration Guide**: See [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md) for detailed information about environment variables, ports, and CORS settings for different deployment scenarios.
+
 ### Run with Docker (Recommended)
 
 The entire stack — API, frontend, and Redis — runs with a single command. No SDKs required.
@@ -96,7 +98,7 @@ dotnet build
 # Run tests
 dotnet test
 
-# Start API (runs on http://localhost:5000)
+# Start API (runs on http://localhost:5037 - see launchSettings.json)
 dotnet run --project CurrencyConverterDemo.Api
 ```
 
